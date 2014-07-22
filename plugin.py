@@ -128,7 +128,8 @@ class DFBugMonitor(callbacks.Plugin):
             issue = lines[i]
 
             # Extract the issue ID from the link to the issue
-            issue_id = issue.findNext('a').text
+            issue_id_link = issue.findNext('a')
+            issue_id = issue_id_link.text
 
             if issue_id in self.known_issues:
                 continue
@@ -141,6 +142,9 @@ class DFBugMonitor(callbacks.Plugin):
                 # If this is the first run, just fill out the known issues set
                 # but don't send any messages
                 continue
+
+            # Get the URL of the bug page
+            issue_url = 'http://www.bay12games.com' + issue_id_link['href']
 
             # Grab the bolded category, and use it to find the description
             issue_category_b = issue.findNext('b')
@@ -156,8 +160,8 @@ class DFBugMonitor(callbacks.Plugin):
             # Build up the formatted message to send
             bolded_id_and_category = ircutils.bold('%s: %s' % (issue_id,
                 issue_category))
-            formatted_msg = '%s %s%s%s' % (bolded_id_and_category,
-                    issue_title, issue_fixer, issue_status)
+            formatted_msg = '%s %s%s%s (%s)' % (bolded_id_and_category,
+                    issue_title, issue_fixer, issue_status, issue_url)
 
 
             for channel in self.irc.state.channels:
