@@ -167,6 +167,19 @@ class DFBugMonitor(callbacks.Plugin):
             for channel in self.irc.state.channels:
                 self.irc.queueMsg(ircmsgs.privmsg(channel, formatted_msg))
 
+            # Next, check to see if there was a closing message by Toady
+            soup = BeautifulSoup(urllib2.urlopen(issue_url).read())
+            last_note = soup.findAll('tr', 'bugnote')[-1]
+            last_note_author = last_note.findAll('a')[1].text
+
+            if last_note_author == u'Toady One':
+                # Grab Toady's last note on the bug and send it
+                last_note_msg = '"' + last_note.findNext('td',
+                        'bugnote-note-public').text + '"'
+                for channel in self.irc.state.channels:
+                    self.irc.queueMsg(ircmsgs.privmsg(channel, last_note_msg))
+
+
         self.first_run = False
 
     def die(self):
