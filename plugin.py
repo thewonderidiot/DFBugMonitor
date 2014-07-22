@@ -80,7 +80,7 @@ class DFBugMonitor(callbacks.Plugin):
         print 'Starting at version %u' % (self.version_id,)
 
         schedule.addPeriodicEvent(self.scrape_changelog, 5*60, 'scrape')
-        schedule.addPeriodicEvent(self.check_devlog, 60*60, 'check_devlog')
+        schedule.addPeriodicEvent(self.check_devlog, 15*60, 'check_devlog')
 
     def check_devlog(self):
         d = feedparser.parse(DEVLOG_URL)
