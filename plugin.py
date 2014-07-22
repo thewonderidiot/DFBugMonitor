@@ -69,7 +69,7 @@ class DFBugMonitor(callbacks.Plugin):
             self.version_id = self.version_id + 1
 
         print 'Starting at version %u' % (self.version_id,)
-        schedule.addPeriodicEvent(self.scrape_changelog, 60, 'scrape')
+        schedule.addPeriodicEvent(self.scrape_changelog, 5*60, 'scrape')
 
     def scrape_changelog(self):
         changelog_url = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php?version_id=%u' % (self.version_id,)
