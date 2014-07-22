@@ -39,7 +39,12 @@ import supybot.ircmsgs as ircmsgs
 import re
 import urllib2
 import HTMLParser
+import feedparser
+import textwrap
 from BeautifulSoup import BeautifulSoup
+
+DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
+CHANGELOG_URL = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php'
 
 class DFBugMonitor(callbacks.Plugin):
     """Simply load the plugin, and it will periodically check for DF bugfixes
@@ -51,12 +56,16 @@ class DFBugMonitor(callbacks.Plugin):
 
         self.irc = irc
 
+        # Get the latest devlog
+        d = feedparser.parse(DEVLOG_URL)
+        self.last_devlog = d.entries[0].title
+
         # Prepare the already-known-issues set
         self.known_issues = set()
         self.first_run = True
 
         # Find the latest version
-        soup = BeautifulSoup(urllib2.urlopen('http://www.bay12games.com/dwarves/mantisbt/changelog_page.php').read())
+        soup = BeautifulSoup(urllib2.urlopen(CHANGELOG_URL).read())
 
         latest_version_link = soup('tt')[0].findAll('a')[1]
         matches = re.search('\d+$', latest_version_link['href'])
@@ -69,10 +78,31 @@ class DFBugMonitor(callbacks.Plugin):
             self.version_id = self.version_id + 1
 
         print 'Starting at version %u' % (self.version_id,)
+
         schedule.addPeriodicEvent(self.scrape_changelog, 5*60, 'scrape')
+        schedule.addPeriodicEvent(self.check_devlog, 60*60, 'check_devlog')
+
+    def check_devlog(self):
+        d = feedparser.parse(DEVLOG_URL)
+
+        date = d.entries[0].title
+
+        if date != self.last_devlog:
+            # New devlog!
+            self.last_devlog = date
+
+            title = ircutils.bold('%s %s: ' % (d.feed.title, date))
+            summary = d.entries[0].summary
+            full_message = title + summary
+
+            split_message = textwrap.wrap(full_message, 400)
+
+            for msg in split_message:
+                for channel in self.irc.state.channels:
+                    self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
 
     def scrape_changelog(self):
-        changelog_url = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php?version_id=%u' % (self.version_id,)
+        changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
         soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
 
@@ -137,6 +167,7 @@ class DFBugMonitor(callbacks.Plugin):
 
     def die(self):
         schedule.removeEvent('scrape')
+        schedule.removeEvent('check_devlog')
 
 
 Class = DFBugMonitor
