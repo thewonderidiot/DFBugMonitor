@@ -160,27 +160,36 @@ class DFBugMonitor(callbacks.Plugin):
             # Build up the formatted message to send
             bolded_id_and_category = ircutils.bold('%s: %s' % (issue_id,
                 issue_category))
-            formatted_msg = '%s %s%s%s (%s)' % (bolded_id_and_category,
+            formatted_msg = '%s %s%s%s ( %s )' % (bolded_id_and_category,
                     issue_title, issue_fixer, issue_status, issue_url)
-
 
             for channel in self.irc.state.channels:
                 self.irc.queueMsg(ircmsgs.privmsg(channel, formatted_msg))
 
-            # Next, check to see if there was a closing message by Toady
-            soup = BeautifulSoup(urllib2.urlopen(issue_url).read())
-            last_note = soup.findAll('tr', 'bugnote')[-1]
-            last_note_author = last_note.findAll('a')[1].text
-
-            if last_note_author == u'Toady One':
-                # Grab Toady's last note on the bug and send it
-                last_note_msg = '"' + last_note.findNext('td',
-                        'bugnote-note-public').text + '"'
-                for channel in self.irc.state.channels:
-                    self.irc.queueMsg(ircmsgs.privmsg(channel, last_note_msg))
-
+            self.send_closing_note(issue_url)
 
         self.first_run = False
+
+    def send_closing_note(self, issue_url):
+        # Read the issue page to check for a closing note by Toady
+        soup = BeautifulSoup(urllib2.urlopen(issue_url).read())
+        bug_notes = soup.findAll('tr', 'bugnote')
+
+        if not bug_notes:
+            # No bug notes, don't do anything
+            return
+
+        # Check the last note on the page to see who made it
+        last_note = bug_notes[-1]
+        last_note_author = last_note.findAll('a')[1].text
+
+        if last_note_author == u'Toady One':
+            # Grab Toady's last note on the bug and send it
+            last_note_msg = '"' + last_note.findNext('td',
+                    'bugnote-note-public').text + '"'
+            for channel in self.irc.state.channels:
+                self.irc.queueMsg(ircmsgs.privmsg(channel, last_note_msg))
+
 
     def die(self):
         schedule.removeEvent('scrape')
