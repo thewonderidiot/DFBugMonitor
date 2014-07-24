@@ -38,9 +38,8 @@ import supybot.ircmsgs as ircmsgs
 
 import re
 import urllib2
-import HTMLParser
 import feedparser
-import textwrap
+from html2text import HTML2Text
 from BeautifulSoup import BeautifulSoup
 
 DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
@@ -95,7 +94,13 @@ class DFBugMonitor(callbacks.Plugin):
             summary = d.entries[0].summary
             full_message = title + summary
 
-            split_message = textwrap.wrap(full_message, 400)
+            # Parse and wrap the message with html2text
+            h = HTML2Text()
+            h.body_width = 450
+
+            # Convert the message to text, and strip empty lines
+            processed_message = h.handle(full_message)
+            split_message = filter(None, processed_message.split('\n'))
 
             for msg in split_message:
                 for channel in self.irc.state.channels:
