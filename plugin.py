@@ -112,7 +112,7 @@ class DFBugMonitor(callbacks.Plugin):
 
             # Convert the message to text, and strip empty lines
             processed_message = h.handle(full_message)
-            split_message = filter(None, processed_message.split('\n'))
+            split_message = filter(None, [x.strip() for x in processed_message.split('\n')])
 
             for msg in split_message:
                 for channel in self.irc.state.channels:
