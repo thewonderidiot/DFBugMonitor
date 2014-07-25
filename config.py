@@ -45,5 +45,11 @@ DFBugMonitor = conf.registerPlugin('DFBugMonitor')
 # conf.registerGlobalValue(DFBugMonitor, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
 
+conf.registerGlobalValue(DFBugMonitor, 'bug_poll_s',
+    registry.PositiveInteger(5*60, """The period in seconds of bug changelog polling"""))
+
+conf.registerGlobalValue(DFBugMonitor, 'devlog_poll_s',
+    registry.PositiveInteger(15*60, """The period in seconds of devlog polling"""))
+
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

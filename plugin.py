@@ -36,6 +36,7 @@ import supybot.callbacks as callbacks
 import supybot.schedule as schedule
 import supybot.ircmsgs as ircmsgs
 
+import time
 import re
 import urllib2
 import feedparser
@@ -78,8 +79,19 @@ class DFBugMonitor(callbacks.Plugin):
 
         print 'Starting at version %u' % (self.version_id,)
 
-        schedule.addPeriodicEvent(self.scrape_changelog, 5*60, 'scrape')
-        schedule.addPeriodicEvent(self.check_devlog, 15*60, 'check_devlog')
+        self.schedule_event(self.scrape_changelog, 'bug_poll_s', 'scrape')
+        self.schedule_event(self.check_devlog, 'devlog_poll_s', 'check_devlog')
+
+    def schedule_event(self, f, config_value, name):
+        # Like schedule.addPeriodicEvent, but capture the name of our config
+        # variable in the closure rather than the value
+        def wrapper():
+            try:
+                f()
+            finally:
+                return schedule.addEvent(wrapper, time.time() + self.registryValue(config_value), name)
+
+        return wrapper()
 
     def check_devlog(self):
         d = feedparser.parse(DEVLOG_URL)
