@@ -51,5 +51,11 @@ conf.registerGlobalValue(DFBugMonitor, 'bug_poll_s',
 conf.registerGlobalValue(DFBugMonitor, 'devlog_poll_s',
     registry.PositiveInteger(15*60, """The period in seconds of devlog polling"""))
 
+conf.registerGlobalValue(DFBugMonitor, 'max_chars_per_line',
+    registry.PositiveInteger(450, """The maximum number of characters per message"""))
+
+conf.registerGlobalValue(DFBugMonitor, 'max_lines',
+    registry.PositiveInteger(6, """The maximum number of messages per devlog"""))
+
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

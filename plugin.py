@@ -108,11 +108,19 @@ class DFBugMonitor(callbacks.Plugin):
 
             # Parse and wrap the message with html2text
             h = HTML2Text()
-            h.body_width = 450
+            h.body_width = self.registryValue('max_chars_per_line')
 
             # Convert the message to text, and strip empty lines
             processed_message = h.handle(full_message)
             split_message = filter(None, [x.strip() for x in processed_message.split('\n')])
+
+            max_lines = self.registryValue('max_lines')
+            if len(split_message) > max_lines:
+                # The devlog is too long... give a configured number and a link
+                devlog_url = d.entries[0].id
+
+                split_message = split_message[0:max_lines]
+                split_message.append('... ' + devlog_url)
 
             self.queue_messages(split_message)
 
