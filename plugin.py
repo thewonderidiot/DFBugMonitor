@@ -114,15 +114,12 @@ class DFBugMonitor(callbacks.Plugin):
             processed_message = h.handle(full_message)
             split_message = filter(None, [x.strip() for x in processed_message.split('\n')])
 
-            for msg in split_message:
-                for channel in self.irc.state.channels:
-                    self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
+            self.queue_messages(split_message)
 
     def scrape_changelog(self):
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
         soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
-
 
         # First check to make sure the version name hasn't changed on us
         version_name = soup('tt')[0].findAll('a')[1].text
@@ -130,13 +127,16 @@ class DFBugMonitor(callbacks.Plugin):
         matches = re.search('^[\d\.]+$', version_name)
         if matches:
             # New version incoming!
-            for channel in self.irc.state.channels:
-                self.irc.queueMsg(ircmsgs.privmsg(channel, ircutils.bold('Dwarf Fortress v%s has been released!' % (version_name,))))
+            self.queue_messages([ircutils.bold('Dwarf Fortress v%s has been released!' % (version_name,))])
+
             # Prepare for the next version
             self.version_id = self.version_id + 1
             self.known_issues.clear()
             return
 
+
+        # Prepare a list of messages to be sent
+        msg_list = []
 
         # Base our scrape off of the br tags that separate issues
         lines = soup('tt')[0].findAll('br')
@@ -174,38 +174,50 @@ class DFBugMonitor(callbacks.Plugin):
             issue_fixer = issue_fixer_link.text
             issue_status = issue_fixer_link.nextSibling
 
-            # Build up the formatted message to send
+            # Build up the formatted message to send, and add it to the list
             bolded_id_and_category = ircutils.bold('%s: %s' % (issue_id,
                 issue_category))
-            formatted_msg = '%s %s%s%s ( %s )' % (bolded_id_and_category,
-                    issue_title, issue_fixer, issue_status, issue_url)
+            msg_list.append('%s %s%s%s ( %s )' % (bolded_id_and_category,
+                    issue_title, issue_fixer, issue_status, issue_url))
 
-            for channel in self.irc.state.channels:
-                self.irc.queueMsg(ircmsgs.privmsg(channel, formatted_msg))
+            # Get the closing note and add it to the list as well
+            last_note_msg = self.get_closing_note(issue_url)
+            if last_note_msg:
+                msg_list.append(last_note_msg)
 
-            self.send_closing_note(issue_url)
+        # Now that we've processed all the issues, send out the messages
+        if msg_list:
+            self.queue_messages(msg_list)
 
+        # Allow messages to be sent next time, if they were inhibited this time
         self.first_run = False
 
-    def send_closing_note(self, issue_url):
+    def get_closing_note(self, issue_url):
         # Read the issue page to check for a closing note by Toady
         soup = BeautifulSoup(urllib2.urlopen(issue_url).read())
         bug_notes = soup.findAll('tr', 'bugnote')
 
         if not bug_notes:
-            # No bug notes, don't do anything
-            return
+            # No bug notes
+            return []
 
         # Check the last note on the page to see who made it
         last_note = bug_notes[-1]
         last_note_author = last_note.findAll('a')[1].text
 
         if last_note_author == u'Toady One':
-            # Grab Toady's last note on the bug and send it
+            # Grab Toady's last note on the bug
             last_note_msg = '"' + last_note.findNext('td',
                     'bugnote-note-public').text + '"'
-            for channel in self.irc.state.channels:
-                self.irc.queueMsg(ircmsgs.privmsg(channel, last_note_msg))
+            return last_note_msg
+        else:
+            # Last not wasn't from Toady
+            return []
+
+    def queue_messages(self, msg_list):
+        for channel in sorted(self.irc.state.channels):
+            for msg in msg_list:
+                self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
 
 
     def die(self):
